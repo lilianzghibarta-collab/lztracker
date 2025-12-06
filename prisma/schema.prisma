@@ -1,0 +1,77 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  name      String?
+  role      Role     @default(worker)
+  company   Company? @relation(fields: [companyId], references: [id])
+  companyId String?
+  createdAt DateTime @default(now())
+}
+
+model Company {
+  id                String    @id @default(uuid())
+  name              String
+  logoUrl           String?
+  subscriptionUnits Int       @default(0)
+  manager           User?     @relation("CompanyManager", fields: [managerId], references: [id])
+  managerId         String?
+  users             User[]
+  locations         Location[]
+  invites           Invite[]
+  createdAt         DateTime  @default(now())
+}
+
+model Invite {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  company   Company  @relation(fields: [companyId], references: [id])
+  companyId String
+  maxUses   Int
+  usesCount Int      @default(0)
+  expiresAt DateTime?
+  createdAt DateTime @default(now())
+}
+
+model Location {
+  id        String   @id @default(uuid())
+  company   Company  @relation(fields: [companyId], references: [id])
+  companyId String
+  name      String
+  lat       Float
+  lon       Float
+  radiusM   Int      @default(500)
+  createdAt DateTime @default(now())
+}
+
+model Timesheet {
+  id         String   @id @default(uuid())
+  worker     User     @relation(fields: [workerId], references: [id])
+  workerId   String
+  company    Company  @relation(fields: [companyId], references: [id])
+  companyId  String
+  location   Location? @relation(fields: [locationId], references: [id])
+  locationId String?
+  startTime  DateTime
+  endTime    DateTime?
+  startLat   Float?
+  startLon   Float?
+  endLat     Float?
+  endLon     Float?
+  totalSec   Int?
+  status     TimesheetStatus @default(WORKING)
+  createdAt  DateTime @default(now())
+}
+
+enum Role { admin manager worker }
+
+enum TimesheetStatus { WORKING PAUSED FINISHED }
