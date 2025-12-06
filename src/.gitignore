@@ -1,0 +1,4 @@
+node_modules/
+dist/
+.env
+.vscode/"Add Vite React frontend and GitHub Pages workflow"
