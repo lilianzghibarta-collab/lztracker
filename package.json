@@ -1,24 +1,22 @@
 {
   "name": "lztracker",
-  "version": "0.1.0",
+  "version": "0.0.0",
   "private": true,
-  "description": "LZTracker - web frontend (Vite + React)",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview",
-    "lint": "eslint . --ext .js,.jsx || true"
+    "preview": "vite preview"
   },
   "dependencies": {
     "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "react-dom": "^18.2.0",
+    "leaflet": "^1.9.4"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.0.0",
-    "eslint": "^8.0.0",
     "vite": "^5.0.0"
   },
   "engines": {
     "node": ">=16"
   }
-}"Add Vite React frontend and GitHub Pages workflow"
+}
