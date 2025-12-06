@@ -18,3 +18,4 @@ Important setup:
 Notes:
 - This is a demo scaffold: Stripe/Mapbox keys are placeholders. For GitHub Pages ensure vite.config.js base='/lztracker/'.
 - Set GitHub repository secrets for STRIPE secret and MAPBOX token if you add CI.
+.
