@@ -14,13 +14,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Use Node.js
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "18"
+          node-version: '18'
 
       - name: Install dependencies
-        run: npm ci
+        # use npm install instead of npm ci when package-lock.json may be absent
+        run: npm install
 
       - name: Build
         run: npm run build
