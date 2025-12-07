@@ -16,11 +16,14 @@ model User {
   company   Company? @relation(fields: [companyId], references: [id])
   companyId String?
   createdAt DateTime @default(now())
+
+  @@index([companyId])
+  @@index([role])
 }
 
 model Company {
   id                String    @id @default(uuid())
-  name              String
+  name              String    @unique
   logoUrl           String?
   subscriptionUnits Int       @default(0)
   manager           User?     @relation("CompanyManager", fields: [managerId], references: [id])
@@ -28,6 +31,7 @@ model Company {
   users             User[]
   locations         Location[]
   invites           Invite[]
+  timesheets        Timesheet[]
   createdAt         DateTime  @default(now())
 }
 
@@ -43,23 +47,26 @@ model Invite {
 }
 
 model Location {
-  id        String   @id @default(uuid())
-  company   Company  @relation(fields: [companyId], references: [id])
-  companyId String
-  name      String
-  lat       Float
-  lon       Float
-  radiusM   Int      @default(500)
-  createdAt DateTime @default(now())
+  id         String      @id @default(uuid())
+  company    Company     @relation(fields: [companyId], references: [id])
+  companyId  String
+  name       String
+  lat        Float
+  lon        Float
+  radiusM    Int         @default(500)
+  timesheets Timesheet[]
+  createdAt  DateTime    @default(now())
+
+  @@index([companyId])
 }
 
 model Timesheet {
-  id         String   @id @default(uuid())
-  worker     User     @relation(fields: [workerId], references: [id])
+  id         String          @id @default(uuid())
+  worker     User            @relation(fields: [workerId], references: [id])
   workerId   String
-  company    Company  @relation(fields: [companyId], references: [id])
+  company    Company         @relation(fields: [companyId], references: [id])
   companyId  String
-  location   Location? @relation(fields: [locationId], references: [id])
+  location   Location?       @relation(fields: [locationId], references: [id])
   locationId String?
   startTime  DateTime
   endTime    DateTime?
@@ -69,7 +76,12 @@ model Timesheet {
   endLon     Float?
   totalSec   Int?
   status     TimesheetStatus @default(WORKING)
-  createdAt  DateTime @default(now())
+  createdAt  DateTime        @default(now())
+
+  @@index([workerId])
+  @@index([companyId])
+  @@index([status])
+  @@index([companyId, status])
 }
 
 enum Role { admin manager worker }

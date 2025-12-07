@@ -35,14 +35,26 @@ app.post('/api/auth/register', async (req, res) => {
 
     let companyId = null;
     if (inviteToken) {
-      const inv = await prisma.invite.findUnique({ where: { token: inviteToken } });
+      const inv = await prisma.invite.findUnique({ 
+        where: { token: inviteToken },
+        include: { 
+          company: {
+            include: {
+              _count: {
+                select: { users: { where: { role: 'worker' } } }
+              }
+            }
+          }
+        }
+      });
       if (!inv) return res.status(400).json({ error: 'invalid invite' });
       if (inv.expiresAt && inv.expiresAt < new Date()) return res.status(400).json({ error: 'invite expired' });
       if (inv.usesCount >= inv.maxUses) return res.status(400).json({ error: 'invite used up' });
-      const company = await prisma.company.findUnique({ where: { id: inv.companyId }, include: { users: true } });
-      const maxWorkers = (company.subscriptionUnits || 0) * 10;
-      const currentWorkers = company.users.filter(u => u.role === 'worker').length;
+      
+      const maxWorkers = (inv.company.subscriptionUnits || 0) * 10;
+      const currentWorkers = inv.company._count.users;
       if (currentWorkers >= maxWorkers) return res.status(400).json({ error: 'company at capacity' });
+      
       companyId = inv.companyId;
       await prisma.invite.update({ where: { id: inv.id }, data: { usesCount: { increment: 1 } } });
     }
@@ -92,9 +104,18 @@ app.post('/api/manager/invites', auth, async (req, res) => {
   const { maxUses = 1, expiresAt } = req.body;
   const manager = await prisma.user.findUnique({ where: { id: req.user.userId } });
   if (!manager || !manager.companyId) return res.status(400).json({ error: 'no company' });
-  const company = await prisma.company.findUnique({ where: { id: manager.companyId }, include: { users: true } });
+  
+  const company = await prisma.company.findUnique({ 
+    where: { id: manager.companyId },
+    include: {
+      _count: {
+        select: { users: { where: { role: 'worker' } } }
+      }
+    }
+  });
+  
   const maxWorkers = (company.subscriptionUnits || 0) * 10;
-  const currentWorkers = company.users.filter(u => u.role === 'worker').length;
+  const currentWorkers = company._count.users;
   const remaining = Math.max(0, maxWorkers - currentWorkers);
   if (maxUses > remaining) return res.status(400).json({ error: 'exceeds subscription remaining slots' });
 
@@ -119,21 +140,46 @@ app.post('/api/worker/start', auth, async (req, res) => {
   const { lat, lon, locationId } = req.body;
   const worker = await prisma.user.findUnique({ where: { id: req.user.userId } });
   if (!worker || !worker.companyId) return res.status(400).json({ error: 'no company' });
+  
   let location = null;
-  if (locationId) location = await prisma.location.findUnique({ where: { id: locationId } });
-  else {
-    const locs = await prisma.location.findMany({ where: { companyId: worker.companyId } });
-    let best = null; let bestD = Infinity;
+  if (locationId) {
+    location = await prisma.location.findUnique({ where: { id: locationId } });
+  } else {
+    // Fetch only locations for this company
+    const locs = await prisma.location.findMany({ 
+      where: { companyId: worker.companyId },
+      select: { id: true, lat: true, lon: true, radiusM: true }
+    });
+    
+    // Find closest location within acceptable range
+    let best = null; 
+    let bestD = Infinity;
     for (const l of locs) {
       const d = haversine(l.lat, l.lon, lat, lon);
-      if (d < bestD) { bestD = d; best = l; }
+      // Early exit if within radius - no need to check all locations
+      if (d <= l.radiusM && d < bestD) { 
+        bestD = d; 
+        best = l; 
+      }
     }
     location = best;
   }
+  
   if (!location) return res.status(400).json({ error: 'no location found' });
   const d = haversine(location.lat, location.lon, lat, lon);
   if (d > location.radiusM) return res.status(400).json({ error: 'not in range', distance: d, radius: location.radiusM });
-  const ts = await prisma.timesheet.create({ data: { workerId: worker.id, companyId: worker.companyId, locationId: location.id, startTime: new Date(), startLat: Number(lat), startLon: Number(lon), status: 'WORKING' } });
+  
+  const ts = await prisma.timesheet.create({ 
+    data: { 
+      workerId: worker.id, 
+      companyId: worker.companyId, 
+      locationId: location.id, 
+      startTime: new Date(), 
+      startLat: Number(lat), 
+      startLon: Number(lon), 
+      status: 'WORKING' 
+    } 
+  });
   res.json(ts);
 });
 
